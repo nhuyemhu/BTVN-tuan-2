@@ -1,0 +1,62 @@
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
+
+demand = ctrl.Antecedent(np.arange(0, 101, 1), 'demand')
+competitor = ctrl.Antecedent(np.arange(0, 101, 1), 'competitor')
+reputation = ctrl.Antecedent(np.arange(0, 101, 1), 'reputation')
+profit = ctrl.Antecedent(np.arange(0, 101, 1), 'profit')
+season = ctrl.Antecedent(np.arange(0, 101, 1), 'season')
+
+discount = ctrl.Consequent(np.arange(0, 71, 1), 'discount')
+
+demand['low'] = fuzz.trimf(demand.universe, [0, 0, 30])
+demand['medium'] = fuzz.trimf(demand.universe, [20, 50, 70])
+demand['high'] = fuzz.trimf(demand.universe, [60, 100, 100])
+
+competitor['low'] = fuzz.trimf(competitor.universe, [0, 0, 30])
+competitor['medium'] = fuzz.trimf(competitor.universe, [20, 50, 70])
+competitor['high'] = fuzz.trimf(competitor.universe, [60, 100, 100])
+
+reputation['low'] = fuzz.trimf(reputation.universe, [0, 0, 40])
+reputation['medium'] = fuzz.trimf(reputation.universe, [30, 50, 70])
+reputation['high'] = fuzz.trimf(reputation.universe, [60, 100, 100])
+
+profit['low'] = fuzz.trimf(profit.universe, [0, 0, 30])
+profit['medium'] = fuzz.trimf(profit.universe, [20, 50, 70])
+profit['high'] = fuzz.trimf(profit.universe, [60, 100, 100])
+
+season['none'] = fuzz.trimf(season.universe, [0, 0, 30])
+season['medium'] = fuzz.trimf(season.universe, [20, 50, 70])
+season['high'] = fuzz.trimf(season.universe, [60, 100, 100])
+
+discount['very_low'] = fuzz.trimf(discount.universe, [0, 0, 5])
+discount['low'] = fuzz.trimf(discount.universe, [5, 7, 10])
+discount['medium'] = fuzz.trimf(discount.universe, [10, 15, 25])
+discount['high'] = fuzz.trimf(discount.universe, [20, 30, 40])
+discount['very_high'] = fuzz.trimf(discount.universe, [40, 55, 70])
+
+rules = [
+
+ctrl.Rule(demand['high'] & competitor['low'] & profit['low'], discount['very_low']),
+ctrl.Rule(demand['low'] & competitor['high'] & profit['high'], discount['high']),
+ctrl.Rule(reputation['high'] & profit['medium'] & season['high'], discount['medium']),
+ctrl.Rule(competitor['high'] & season['high'] & profit['high'], discount['very_high']),
+ctrl.Rule(reputation['low'] & demand['medium'] & profit['low'], discount['medium']),
+ctrl.Rule(demand['high'] & season['none'] & competitor['low'], discount['very_low']),
+ctrl.Rule(profit['high'] & competitor['medium'] & season['medium'], discount['medium']),
+ctrl.Rule(season['high'], discount['medium'])
+]
+
+system = ctrl.ControlSystem(rules)
+sim = ctrl.ControlSystemSimulation(system)
+
+sim.input['demand'] = 90
+sim.input['competitor'] = 60   
+sim.input['reputation'] = 60
+sim.input['profit'] = 80
+sim.input['season'] = 90
+
+sim.compute()
+
+print("Mức giảm giá (%):", sim.output['discount'])
