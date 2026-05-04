@@ -1,0 +1,85 @@
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
+
+distance = ctrl.Antecedent(np.arange(0, 51, 1), 'distance')  # km
+traffic = ctrl.Antecedent(np.arange(0, 101, 1), 'traffic')   # %
+demand = ctrl.Antecedent(np.arange(0, 101, 1), 'demand')     # %
+weather = ctrl.Antecedent(np.arange(0, 101, 1), 'weather')   # %
+rating = ctrl.Antecedent(np.arange(1, 6, 0.1), 'rating')     # sao
+punctual = ctrl.Antecedent(np.arange(0, 101, 1), 'punctual') # %
+
+price = ctrl.Consequent(np.arange(0, 101, 1), 'price')
+reward = ctrl.Consequent(np.arange(0, 101, 1), 'reward')
+
+distance['short'] = fuzz.trimf(distance.universe, [0, 0, 3])
+distance['medium'] = fuzz.trimf(distance.universe, [2, 5, 8])
+distance['long'] = fuzz.trimf(distance.universe, [6, 12, 20])
+distance['very_long'] = fuzz.trimf(distance.universe, [15, 30, 50])
+
+traffic['low'] = fuzz.trimf(traffic.universe, [0, 0, 30])
+traffic['medium'] = fuzz.trimf(traffic.universe, [20, 50, 70])
+traffic['high'] = fuzz.trimf(traffic.universe, [60, 100, 100])
+
+demand['low'] = fuzz.trimf(demand.universe, [0, 0, 30])
+demand['medium'] = fuzz.trimf(demand.universe, [20, 50, 70])
+demand['high'] = fuzz.trimf(demand.universe, [60, 100, 100])
+
+weather['good'] = fuzz.trimf(weather.universe, [0, 0, 30])
+weather['moderate'] = fuzz.trimf(weather.universe, [20, 50, 70])
+weather['bad'] = fuzz.trimf(weather.universe, [60, 100, 100])
+
+rating['poor'] = fuzz.trimf(rating.universe, [1, 1, 2.5])
+rating['average'] = fuzz.trimf(rating.universe, [2, 3, 4])
+rating['good'] = fuzz.trimf(rating.universe, [3.5, 5, 5])
+
+punctual['late'] = fuzz.trimf(punctual.universe, [0, 0, 50])
+punctual['ontime'] = fuzz.trimf(punctual.universe, [40, 60, 80])
+punctual['early'] = fuzz.trimf(punctual.universe, [70, 100, 100])
+
+price['low'] = fuzz.trimf(price.universe, [0, 0, 30])
+price['medium'] = fuzz.trimf(price.universe, [20, 50, 70])
+price['high'] = fuzz.trimf(price.universe, [60, 75, 90])
+price['very_high'] = fuzz.trimf(price.universe, [80, 100, 100])
+
+reward['none'] = fuzz.trimf(reward.universe, [0, 0, 20])
+reward['few'] = fuzz.trimf(reward.universe, [10, 30, 50])
+reward['moderate'] = fuzz.trimf(reward.universe, [40, 60, 80])
+reward['high'] = fuzz.trimf(reward.universe, [70, 100, 100])
+
+rules = [
+ctrl.Rule(distance['short'] & traffic['low'] & demand['low'], price['low']),
+ctrl.Rule(distance['short'] & traffic['medium'] & demand['high'], price['medium']),
+ctrl.Rule(distance['medium'] & traffic['high'] & demand['high'], price['high']),
+ctrl.Rule(distance['long'] & traffic['medium'] & weather['good'], price['medium']),
+ctrl.Rule(distance['long'] & traffic['high'] & weather['bad'], price['very_high']),
+ctrl.Rule(distance['very_long'] & traffic['high'] & demand['high'], price['very_high']),
+ctrl.Rule(distance['medium'] & traffic['low'] & demand['low'], price['medium']),
+ctrl.Rule(distance['short'] & traffic['high'] & weather['bad'], price['high']),
+ctrl.Rule(distance['very_long'] & weather['bad'], price['very_high']),
+ctrl.Rule(distance['medium'] & traffic['medium'] & weather['moderate'], price['medium']),
+ctrl.Rule(rating['good'] & punctual['early'], reward['high']),
+ctrl.Rule(rating['average'] & punctual['ontime'], reward['moderate']),
+ctrl.Rule(rating['poor'] & punctual['late'], reward['none']),
+ctrl.Rule(distance['long'] & traffic['high'] & punctual['ontime'], reward['high']),
+ctrl.Rule(distance['medium'] & traffic['medium'] & rating['good'], reward['moderate']),
+ctrl.Rule(distance['very_long'] & weather['bad'] & rating['good'], reward['high']),
+ctrl.Rule(distance['short'] & rating['average'] & punctual['ontime'], reward['few']),
+ctrl.Rule(distance['long'] & traffic['high'] & punctual['late'], reward['few']),
+ctrl.Rule(distance['medium'] & weather['moderate'] & rating['good'], reward['moderate'])
+]
+
+system = ctrl.ControlSystem(rules)
+sim = ctrl.ControlSystemSimulation(system)
+
+sim.input['distance'] = 10
+sim.input['traffic'] = 80
+sim.input['demand'] = 90
+sim.input['weather'] = 70
+sim.input['rating'] = 4.5
+sim.input['punctual'] = 85
+
+sim.compute()
+
+print("Giá:", sim.output['price'])
+print("Điểm thưởng:", sim.output['reward'])
