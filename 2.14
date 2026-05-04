@@ -1,0 +1,77 @@
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
+
+density = ctrl.Antecedent(np.arange(0, 101, 1), 'density')
+urgency = ctrl.Antecedent(np.arange(0, 101, 1), 'urgency')
+load = ctrl.Antecedent(np.arange(0, 101, 1), 'load')
+traffic = ctrl.Antecedent(np.arange(0, 101, 1), 'traffic')
+profit = ctrl.Antecedent(np.arange(0, 101, 1), 'profit')
+
+combine = ctrl.Consequent(np.arange(0, 11, 1), 'combine')
+priority = ctrl.Consequent(np.arange(0, 101, 1), 'priority')
+
+for var in [density, urgency, load, traffic, profit]:
+    var['low'] = fuzz.trimf(var.universe, [0, 0, 30])
+    var['medium'] = fuzz.trimf(var.universe, [20, 50, 70])
+    var['high'] = fuzz.trimf(var.universe, [60, 100, 100])
+
+combine['few'] = fuzz.trimf(combine.universe, [0, 0, 3])
+combine['some'] = fuzz.trimf(combine.universe, [2, 5, 7])
+combine['many'] = fuzz.trimf(combine.universe, [6, 10, 10])
+
+priority['low'] = fuzz.trimf(priority.universe, [0, 0, 30])
+priority['medium'] = fuzz.trimf(priority.universe, [20, 50, 70])
+priority['high'] = fuzz.trimf(priority.universe, [60, 100, 100])
+
+rules = [
+ctrl.Rule(density['high'] & load['low'] & traffic['low'], combine['many']),
+ctrl.Rule(density['medium'] & traffic['high'] & urgency['medium'], combine['some']),
+ctrl.Rule(load['high'] & density['high'] & profit['medium'], combine['some']),
+ctrl.Rule(density['low'] & urgency['high'] & traffic['medium'], combine['some']),
+ctrl.Rule(profit['high'] & urgency['high'] & traffic['high'], combine['some']),
+ctrl.Rule(density['medium'], combine['some']),
+ctrl.Rule(density['high'], combine['many']),
+ctrl.Rule(urgency['high'] & profit['high'], priority['high']),
+ctrl.Rule(urgency['medium'] & traffic['medium'], priority['medium']),
+ctrl.Rule(urgency['low'] & density['high'] & profit['low'], priority['low']),
+ctrl.Rule(urgency['medium'], priority['medium']),
+ctrl.Rule(urgency['high'], priority['high']),
+]
+
+system = ctrl.ControlSystem(rules)
+sim = ctrl.ControlSystemSimulation(system)
+
+sim.input['density'] = 90     
+sim.input['urgency'] = 50     
+sim.input['load'] = 20       
+sim.input['traffic'] = 50     
+sim.input['profit'] = 50      
+
+sim.compute()
+
+combine_val = sim.output.get('combine', 0)
+priority_val = sim.output.get('priority', 0)
+
+print("Số đơn nên ghép:", round(combine_val, 2))
+print("Mức ưu tiên:", round(priority_val, 2))
+
+def label_combine(x):
+    if x < 3:
+        return "Ít"
+    elif x < 6:
+        return "Một số"
+    else:
+        return "Nhiều"
+
+def label_priority(x):
+    if x < 30:
+        return "Thấp"
+    elif x < 70:
+        return "Trung bình"
+    else:
+        return "Cao"
+
+print("=> Kết luận:")
+print("Ghép đơn:", label_combine(combine_val))
+print("Ưu tiên:", label_priority(priority_val))
